@@ -1,0 +1,1 @@
+ALTER TABLE public.cantor_melody_assignments ADD COLUMN liturgical_period text DEFAULT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE public.devotions ADD COLUMN songbook_page integer DEFAULT NULL;

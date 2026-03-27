@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can delete cantors" ON public.cantors FOR DELETE TO anon, authenticated USING (true);

@@ -1,0 +1,13 @@
+project_id = "ymidicazvpwhvmsmtpdj"
+
+[functions.brewiarz-proxy]
+verify_jwt = false
+
+[functions.cantor-auth]
+verify_jwt = false
+
+[functions.musicam-proxy]
+verify_jwt = false
+
+[functions.openlp-proxy]
+verify_jwt = false

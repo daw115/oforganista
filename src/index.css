@@ -1,0 +1,269 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 2%;
+    --foreground: 210 40% 93%;
+
+    --card: 217 33% 8%;
+    --card-foreground: 210 40% 93%;
+
+    --popover: 217 33% 8%;
+    --popover-foreground: 210 40% 93%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 2%;
+
+    --secondary: 263 70% 50%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 263 70% 50%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 217 33% 5%;
+    --sidebar-foreground: 210 40% 85%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 2%;
+    --sidebar-accent: 217 33% 12%;
+    --sidebar-accent-foreground: 210 40% 93%;
+    --sidebar-border: 217 33% 14%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Custom tokens */
+    --panel: 222 47% 6%;
+    --panel-hover: 217 33% 10%;
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --amber: 38 92% 50%;
+    --amber-foreground: 38 92% 20%;
+    --emerald: 142 71% 45%;
+    --emerald-foreground: 142 71% 10%;
+    --indigo: 217 91% 60%;
+    --rose: 330 81% 60%;
+    --violet: 263 70% 50%;
+
+    --glass: 217 33% 8%;
+    --glass-border: 217 33% 17%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
+  }
+
+  /* GPU-accelerated smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--panel));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Touch-friendly tap targets */
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* Safe area for bottom nav on notched phones (iOS, Android cutouts) */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, [role="button"] {
+  -webkit-touch-callout: none;
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* GPU acceleration for animated elements */
+.animate-fade-in, .animate-pulse, [class*="transition"] {
+  will-change: auto;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Momentum scrolling for iOS */
+.overflow-auto, .overflow-y-auto, .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ChromeOS / large touchscreens — slightly larger touch targets */
+@media (pointer: coarse) and (min-width: 768px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Prevent text selection on interactive elements (all platforms) */
+nav, [role="tablist"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Windows high contrast mode support */
+@media (forced-colors: active) {
+  .glass-card {
+    border: 1px solid ButtonText;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply rounded-xl border border-border bg-card;
+  }
+
+  .glow-indigo {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.15), 0 0 60px hsl(var(--primary) / 0.05);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 20px hsl(var(--warning) / 0.15), 0 0 60px hsl(var(--warning) / 0.05);
+  }
+
+  .gradient-header {
+    background: linear-gradient(135deg, hsl(217 33% 8%), hsl(263 40% 12%));
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.25), 0 0 45px hsl(var(--primary) / 0.1);
+  }
+}
+
+/* Liturgy parsed HTML content styles */
+.liturgy-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.liturgy-content td {
+  padding: 2px 4px;
+  vertical-align: top;
+}
+.liturgy-content .readings-section-title {
+  font-weight: 800;
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  justify-content: space-between;
+  user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.liturgy-content .readings-section-title .readings-section-ref {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: none;
+  opacity: 0.85;
+}
+.liturgy-content .readings-section-title::after {
+  content: '▾';
+  font-size: 0.75rem;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.liturgy-content .readings-section-title.collapsed {
+  border-radius: 8px;
+}
+.liturgy-content .readings-section-title.collapsed::after {
+  transform: rotate(-90deg);
+}
+.liturgy-content .readings-section-subtitle {
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 4px 12px 6px;
+  background: hsl(var(--primary) / 0.06);
+  color: hsl(var(--primary) / 0.8);
+  font-style: italic;
+  border-radius: 0 0 8px 8px;
+  margin-bottom: 4px;
+}
+.liturgy-content .dzien { font-weight: 800; font-size: 1.1rem; }
+.liturgy-content .week, .liturgy-content .rozaniec { font-size: 0.9rem; opacity: 0.85; }
+.liturgy-content .obchod { font-weight: 700; font-size: 1rem; margin-top: 0.5em; }
+.liturgy-content .kolor { font-size: 0.9rem; }
+.liturgy-content .msza, .liturgy-content .obrzedowe,
+.liturgy-content .lmnew, .liturgy-content .lmold,
+.liturgy-content .lg, .liturgy-content .lgskr { font-size: 0.85rem; line-height: 1.5; }
+
+.liturgy-content > *:first-child { margin-top: 0; }
+.liturgy-content > *:last-child { margin-bottom: 0; }
+
+/* Siedlecki songbook animations */
+@keyframes siedleckiSlideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0.15; transform: translateX(-50px); }
+}
+@keyframes siedleckiSlideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0.15; transform: translateX(50px); }
+}
+@keyframes siedleckiSlideInLeft {
+  from { opacity: 0.15; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes siedleckiSlideInRight {
+  from { opacity: 0.15; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.siedlecki-slide-out-left { animation: siedleckiSlideOutLeft 0.18s ease both; }
+.siedlecki-slide-out-right { animation: siedleckiSlideOutRight 0.18s ease both; }
+.siedlecki-slide-in-left { animation: siedleckiSlideInLeft 0.22s ease both; }
+.siedlecki-slide-in-right { animation: siedleckiSlideInRight 0.22s ease both; }
