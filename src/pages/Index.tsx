@@ -1,44 +1,50 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
 import { PinLockScreen } from '@/components/auth/PinLockScreen';
-import { getProjectorSettings, getResolvedTextColor } from '@/lib/projectorSettings';
+import { getProjectorSettings } from '@/lib/projectorSettings';
 import { useSchedule } from '@/hooks/useSchedule';
 import { useProjector } from '@/hooks/useProjector';
-import { useProjectorLAN } from '@/hooks/useProjectorLAN';
+// useProjectorLAN removed — internet-only sync via Supabase Realtime
 import { useCantors } from '@/hooks/useCantors';
 import { AppSidebar, Section } from '@/components/layout/AppSidebar';
 import { SimpleNavBar } from '@/components/layout/SimpleNavBar';
-import { TodayCard } from '@/components/schedule/TodayCard';
-import { StatsPanel } from '@/components/schedule/StatsPanel';
-import { ScheduleTable } from '@/components/schedule/ScheduleTable';
-import { SettlementPanel } from '@/components/schedule/SettlementPanel';
-import { LiturgyPanel, type LiturgyAddTarget } from '@/components/liturgy/LiturgyPanel';
-import { ProjectorControl } from '@/components/projector/ProjectorControl';
-import { ProjectorLANControl } from '@/components/projector/ProjectorLANControl';
-import { ProjectorLANRemote } from '@/components/projector/ProjectorLANRemote';
-import { SongLibraryManager } from '@/components/projector/SongLibraryManager';
-import { SongDatabaseEditor } from '@/components/projector/SongDatabaseEditor';
-import { AnnouncementsPanel } from '@/components/announcements/AnnouncementsPanel';
-import { TodayAnnouncementCard } from '@/components/announcements/TodayAnnouncementCard';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
-import { CantorPanel } from '@/components/cantor/CantorPanel';
-import { CantorNotifications } from '@/components/cantor/CantorNotifications';
-import { CantorAdmin } from '@/components/cantor/CantorAdmin';
-import { MelodyLibraryManager } from '@/components/cantor/MelodyLibraryManager';
 import { SettingsPanel, getModuleSettings, syncModuleSettingsFromServer, type ModuleSettings, type ViewMode } from '@/components/settings/SettingsPanel';
 import { useDevotions, estimateLiturgicalPeriod } from '@/hooks/useDevotions';
-import { DevotionsManager } from '@/components/devotions/DevotionsManager';
-import { TodayDevotionsCard } from '@/components/devotions/TodayDevotionsCard';
-import { SongbookPanel } from '@/components/songbook/SongbookPanel';
 import type { PilotProps } from '@/components/projector/PilotStrip';
+import type { LiturgyAddTarget } from '@/components/liturgy/LiturgyPanel';
 import { getSongSlides } from '@/lib/projectorLayout';
-import { DashboardPanel } from '@/components/dashboard/DashboardPanel';
-import { AllPanel } from '@/components/all/AllPanel';
 import { useLiturgyPrefetch } from '@/hooks/useLiturgyPrefetch';
-import { HarmonogramsPanel } from '@/components/harmonograms/HarmonogramsPanel';
 
-import { searchAndAddSong } from '@/lib/openLpApi';
-import { ChevronDown, ChevronUp, Calendar, Download, Monitor, Wifi, Settings as SettingsIcon, Database } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calendar, Download, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+// ─── Lazy-loaded panels — only loaded when user navigates to them ───
+const DashboardPanel = lazy(() => import('@/components/dashboard/DashboardPanel').then(m => ({ default: m.DashboardPanel })));
+const AllPanel = lazy(() => import('@/components/all/AllPanel').then(m => ({ default: m.AllPanel })));
+const LiturgyPanel = lazy(() => import('@/components/liturgy/LiturgyPanel').then(m => ({ default: m.LiturgyPanel })));
+const ProjectorControl = lazy(() => import('@/components/projector/ProjectorControl').then(m => ({ default: m.ProjectorControl })));
+// ProjectorLANControl and ProjectorLANRemote removed — no OpenLP
+const SongLibraryManager = lazy(() => import('@/components/projector/SongLibraryManager').then(m => ({ default: m.SongLibraryManager })));
+const SongDatabaseEditor = lazy(() => import('@/components/projector/SongDatabaseEditor').then(m => ({ default: m.SongDatabaseEditor })));
+const AnnouncementsPanel = lazy(() => import('@/components/announcements/AnnouncementsPanel').then(m => ({ default: m.AnnouncementsPanel })));
+const CantorPanel = lazy(() => import('@/components/cantor/CantorPanel').then(m => ({ default: m.CantorPanel })));
+const MelodyLibraryManager = lazy(() => import('@/components/cantor/MelodyLibraryManager').then(m => ({ default: m.MelodyLibraryManager })));
+const DevotionsManager = lazy(() => import('@/components/devotions/DevotionsManager').then(m => ({ default: m.DevotionsManager })));
+const SongbookPanel = lazy(() => import('@/components/songbook/SongbookPanel').then(m => ({ default: m.SongbookPanel })));
+const HarmonogramsPanel = lazy(() => import('@/components/harmonograms/HarmonogramsPanel').then(m => ({ default: m.HarmonogramsPanel })));
+const TodayCard = lazy(() => import('@/components/schedule/TodayCard').then(m => ({ default: m.TodayCard })));
+const StatsPanel = lazy(() => import('@/components/schedule/StatsPanel').then(m => ({ default: m.StatsPanel })));
+const ScheduleTable = lazy(() => import('@/components/schedule/ScheduleTable').then(m => ({ default: m.ScheduleTable })));
+const SettlementPanel = lazy(() => import('@/components/schedule/SettlementPanel').then(m => ({ default: m.SettlementPanel })));
+
+// Section loading fallback — skeleton with subtle pulse
+const SectionLoader = () => (
+  <div className="space-y-4 animate-pulse">
+    <div className="h-8 bg-muted/30 rounded-lg w-1/3" />
+    <div className="h-32 bg-muted/20 rounded-xl" />
+    <div className="h-32 bg-muted/20 rounded-xl" />
+  </div>
+);
 
 
 const Index = () => {
@@ -49,7 +55,6 @@ const Index = () => {
   } = useSchedule();
 
   const projector = useProjector();
-  const projectorLAN = useProjectorLAN();
   const announcements = useAnnouncements();
   const cantors = useCantors();
   const devotionsHook = useDevotions();
@@ -73,32 +78,13 @@ const Index = () => {
     try { return sessionStorage.getItem('appUnlockedUser'); } catch { return null; }
   });
 
-  const handleUnlock = (name: string) => {
+  const handleUnlock = useCallback((name: string) => {
     setUnlockedUser(name);
     try { sessionStorage.setItem('appUnlockedUser', name); } catch {}
-  };
+  }, []);
 
 
-  // Forward remote LAN bridge state to projector screen via main sync channel
-  useEffect(() => {
-    const remote = projectorLAN.remoteLanState;
-    if (projectorLAN.bridgeMode || !remote?.connected) return;
-    const slide = remote.slides[remote.currentSlideIndex];
-    const text = slide?.text ?? '';
-    const title = remote.currentTitle ?? '';
-    const isLive = remote.displayMode === 'show';
-    // Include visual settings so remote displays get correct appearance
-    const ps = getProjectorSettings();
-    const resolvedColor = getResolvedTextColor(ps);
-    const settings = {
-      fontSize: ps.fontSize, textColor: resolvedColor, strokeWidth: ps.strokeWidth,
-      background: ps.background, shadowIntensity: ps.shadowIntensity, rotation: ps.rotation,
-      maxLines: ps.maxLines, offsetX: ps.offsetX, offsetY: ps.offsetY, scale: ps.scale,
-    };
-    projector.projectorSync.sendState({ text, isLive, title, settings });
-  }, [projectorLAN.bridgeMode, projectorLAN.remoteLanState, projector.projectorSync]);
-
-  // Build dynamic add targets for Liturgy panel based on enabled modules
+  // Build dynamic add targets for Liturgy panel
   const liturgyAddTargets = useMemo<LiturgyAddTarget[]>(() => {
     const targets: LiturgyAddTarget[] = [];
     if (moduleSettings.projectorEnabled) {
@@ -109,51 +95,26 @@ const Index = () => {
         onAdd: (song, meta) => projector.addToPlaylist(song, meta),
       });
     }
-    if (moduleSettings.projectorLANEnabled || moduleSettings.projectorLANRemoteEnabled) {
-      const isServer = moduleSettings.projectorLANEnabled;
-      targets.push({
-        key: 'lan',
-        label: 'LAN',
-        icon: <Wifi className="w-3 h-3 text-emerald" />,
-        onAdd: async (song) => {
-          if (isServer) {
-            if (projectorLAN.state.connected) {
-              const found = await searchAndAddSong(projectorLAN.config, song.title);
-              if (!found) console.warn(`Nie znaleziono „${song.title}" w OpenLP`);
-              else {
-                setTimeout(() => projectorLAN.refreshData(), 500);
-                setTimeout(() => projectorLAN.refreshData(), 1200);
-              }
-            }
-          } else {
-            await projectorLAN.lanSync.sendLanCommand('addSong', undefined, song.title);
-            await projectorLAN.lanSync.sendLanCommand('refresh');
-          }
-        },
-      });
-    }
     return targets;
-  }, [moduleSettings.projectorEnabled, moduleSettings.projectorLANEnabled, moduleSettings.projectorLANRemoteEnabled, projector.addToPlaylist, projectorLAN.state.connected, projectorLAN.config, projectorLAN.refreshData, projectorLAN.lanSync]);
+  }, [moduleSettings.projectorEnabled, projector.addToPlaylist]);
 
   const projectorPlaylistSongIds = useMemo(() => new Set(projector.state.playlist.map(p => p.songId)), [projector.state.playlist]);
 
   // If current section is disabled, redirect
   const effectiveSection = (
     (section === 'all' && viewMode !== 'all') ||
-    (section === 'projector' && !moduleSettings.projectorEnabled) ||
-    (section === 'projectorLAN' && !moduleSettings.projectorLANEnabled) ||
-    (section === 'projectorLANRemote' && !moduleSettings.projectorLANRemoteEnabled)
+    (section === 'projector' && !moduleSettings.projectorEnabled)
   ) ? 'dashboard' : section;
 
   const remoteElement = null;
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
     } else {
       document.exitFullscreen().catch(() => {});
     }
-  };
+  }, []);
 
   if (!unlockedUser) {
     return <PinLockScreen onUnlock={handleUnlock} />;
@@ -182,7 +143,7 @@ const Index = () => {
       )}
 
       <main className="flex-1 overflow-auto">
-        <div className="animate-fade-in h-full p-3 md:p-4 lg:p-5 pb-20 md:pb-4 max-w-screen-2xl mx-auto">
+        <div className="h-full p-3 md:p-4 lg:p-5 pb-20 md:pb-4 max-w-screen-2xl mx-auto">
 
           {/* Status message */}
           {msg && (
@@ -192,6 +153,7 @@ const Index = () => {
           )}
 
           {/* Dashboard */}
+          <Suspense fallback={<SectionLoader />}>
           {effectiveSection === 'dashboard' && (
             <DashboardPanel
               sched={sched}
@@ -326,13 +288,7 @@ const Index = () => {
           {effectiveSection === 'devotions' && <DevotionsManager />}
 
           {/* Projector section */}
-          {effectiveSection === 'projector' && <ProjectorControl projector={projector} lan={moduleSettings.projectorLANEnabled ? projectorLAN : undefined} />}
-
-          {/* Projector LAN Server section */}
-          {effectiveSection === 'projectorLAN' && <ProjectorLANControl lan={projectorLAN} projector={projector} />}
-
-          {/* Projector LAN Remote section */}
-          {effectiveSection === 'projectorLANRemote' && <ProjectorLANRemote lan={projectorLAN} projector={projector} />}
+          {effectiveSection === 'projector' && <ProjectorControl projector={projector} />}
 
           {/* Song Library Manager section */}
           {effectiveSection === 'songLibrary' && <SongLibraryManager projector={projector} />}
@@ -372,23 +328,14 @@ const Index = () => {
 
           {/* Songbook section */}
           {effectiveSection === 'songbook' && (() => {
-            const activeRemote = moduleSettings.activeRemote;
-            const isLAN = activeRemote === 'projectorLAN' || activeRemote === 'projectorLANRemote';
-            const pilotProps: PilotProps | undefined = activeRemote ? {
-              onPrevSlide: () => { if (isLAN) projectorLAN.prevSlide(); else projector.prevSlide(); },
-              onNextSlide: () => { if (isLAN) projectorLAN.nextSlide(); else projector.nextSlide(); },
-              onPrevSong: () => {
-                if (isLAN) { projectorLAN.prevServiceItem(); }
-                else { const { currentItemIndex } = projector.state; if (currentItemIndex > 0) projector.goToItem(currentItemIndex - 1); }
-              },
-              onNextSong: () => {
-                if (isLAN) { projectorLAN.nextServiceItem(); }
-                else { const { currentItemIndex, playlist } = projector.state; if (currentItemIndex < playlist.length - 1) projector.goToItem(currentItemIndex + 1); }
-              },
-              onToggleLive: () => { if (isLAN) projectorLAN.toggleDisplay(); else projector.toggleLive(); },
-              isLive: isLAN ? projectorLAN.state.displayMode === 'show' : projector.state.isLive,
+            const pilotProps: PilotProps | undefined = moduleSettings.projectorEnabled ? {
+              onPrevSlide: () => projector.prevSlide(),
+              onNextSlide: () => projector.nextSlide(),
+              onPrevSong: () => { const { currentItemIndex } = projector.state; if (currentItemIndex > 0) projector.goToItem(currentItemIndex - 1); },
+              onNextSong: () => { const { currentItemIndex, playlist } = projector.state; if (currentItemIndex < playlist.length - 1) projector.goToItem(currentItemIndex + 1); },
+              onToggleLive: () => projector.toggleLive(),
+              isLive: projector.state.isLive,
               slideInfo: (() => {
-                if (isLAN) return `${projectorLAN.state.currentSlideIndex + 1}/${projectorLAN.state.slides.length}`;
                 const song = projector.directSong || projector.currentSong;
                 const vi = projector.directSong ? projector.directVerseIndex : projector.state.currentVerseIndex;
                 const total = song ? getSongSlides(song).length : 0;
@@ -407,6 +354,7 @@ const Index = () => {
               onRestoreBackup={projector.setSongs}
             />
           )}
+          </Suspense>
         </div>
       </main>
     </div>

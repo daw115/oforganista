@@ -2,7 +2,6 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { getSongSlides } from '@/lib/projectorLayout';
 import { useProjector } from '@/hooks/useProjector';
-import type { useProjectorLAN } from '@/hooks/useProjectorLAN';
 import { SongLibrary } from './SongLibrary';
 import { PlaylistPanel } from './PlaylistPanel';
 import { SongbookPanel } from './SongbookPanel';
@@ -25,7 +24,6 @@ import {
 import type { Song } from '@/types/projector';
 
 type ProjectorHook = ReturnType<typeof useProjector>;
-type LANHook = ReturnType<typeof useProjectorLAN>;
 
 /** Renders text at 1280×768 native resolution, then CSS-scales to fit the container */
 function PreviewMiniScreen({ text, isLive, hasContent, verseLabel }: { text: string; isLive: boolean; hasContent: boolean; verseLabel?: string }) {
@@ -119,7 +117,7 @@ function PreviewMiniScreen({ text, isLive, hasContent, verseLabel }: { text: str
   );
 }
 
-export function ProjectorControl({ projector, lan }: { projector: ProjectorHook; lan?: LANHook }) {
+export function ProjectorControl({ projector }: { projector: ProjectorHook }) {
   const {
     songs, filteredSongs, state, loading,
     searchQuery, setSearchQuery, searchByContent, setSearchByContent,

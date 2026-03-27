@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, Calendar, BookOpen, MonitorPlay, Settings, MoreVertical, RefreshCw, ClipboardPaste, HelpCircle, Trash2, Wifi, Globe, Music, Megaphone, Maximize, ChevronLeft, ChevronRight, Mic, Library, Church, BookOpenCheck, MoreHorizontal, X, Database, ListMusic } from 'lucide-react';
+import { LayoutDashboard, Calendar, BookOpen, MonitorPlay, Settings, MoreVertical, RefreshCw, ClipboardPaste, HelpCircle, Trash2, Music, Megaphone, Maximize, ChevronLeft, ChevronRight, Mic, Library, Church, BookOpenCheck, MoreHorizontal, X, Database, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPL } from '@/lib/dateUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ModuleSettings } from '@/components/settings/SettingsPanel';
 
-export type Section = 'dashboard' | 'all' | 'schedule' | 'liturgy' | 'announcements' | 'devotions' | 'projector' | 'projectorLAN' | 'projectorLANRemote' | 'songLibrary' | 'songEditor' | 'melodyLibrary' | 'songbook' | 'cantors' | 'harmonograms' | 'settings';
+export type Section = 'dashboard' | 'all' | 'schedule' | 'liturgy' | 'announcements' | 'devotions' | 'projector' | 'songLibrary' | 'songEditor' | 'melodyLibrary' | 'songbook' | 'cantors' | 'harmonograms' | 'settings';
 export type ViewMode = 'simple' | 'complex';
 
 interface SidebarProps {
@@ -44,8 +44,6 @@ export function AppSidebar({ active, onNavigate, onPaste, onHelp, onClear, onRef
     { id: 'announcements', label: 'Ogłoszenia', shortLabel: 'Ogłosz.', icon: Megaphone, visible: true },
     { id: 'devotions', label: 'Nabożeństwa', shortLabel: 'Naboż.', icon: Church, visible: true },
     { id: 'projector', label: 'Rzutnik', shortLabel: 'Rzutnik', icon: MonitorPlay, visible: moduleSettings?.projectorEnabled ?? true, pinMobile: true },
-    { id: 'projectorLAN', label: 'LAN Serwer', shortLabel: 'LAN', icon: Wifi, visible: moduleSettings?.projectorLANEnabled ?? false },
-    { id: 'projectorLANRemote', label: 'LAN Pilot', shortLabel: 'Pilot', icon: Globe, visible: moduleSettings?.projectorLANRemoteEnabled ?? false },
     { id: 'songLibrary', label: 'Baza Pieśni', shortLabel: 'Pieśni', icon: Music, visible: true },
     { id: 'songEditor', label: 'Edytor Bazy', shortLabel: 'Edytor', icon: Database, visible: true },
     { id: 'melodyLibrary', label: 'Baza Melodii', shortLabel: 'Melodie', icon: Library, visible: true },

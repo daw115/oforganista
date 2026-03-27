@@ -3,67 +3,45 @@ import {
   Monitor, MonitorOff,
 } from 'lucide-react';
 import type { useProjector } from '@/hooks/useProjector';
-import type { useProjectorLAN } from '@/hooks/useProjectorLAN';
 import type { ActiveRemote } from '@/components/settings/SettingsPanel';
 import { getSongSlides } from '@/lib/projectorLayout';
 
 type ProjectorHook = ReturnType<typeof useProjector>;
-type LANHook = ReturnType<typeof useProjectorLAN>;
 
 interface RemoteControlProps {
   activeRemote: ActiveRemote;
   projector: ProjectorHook;
-  lan: LANHook;
 }
 
-export function RemoteControl({ activeRemote, projector, lan }: RemoteControlProps) {
+export function RemoteControl({ activeRemote, projector }: RemoteControlProps) {
   if (!activeRemote) return null;
 
-  const isLAN = activeRemote === 'projectorLAN' || activeRemote === 'projectorLANRemote';
-
-  const handlePrev = () => { if (isLAN) lan.prevSlide(); else projector.prevSlide(); };
-  const handleNext = () => { if (isLAN) lan.nextSlide(); else projector.nextSlide(); };
+  const handlePrev = () => projector.prevSlide();
+  const handleNext = () => projector.nextSlide();
   const handlePrevSong = () => {
-    if (isLAN) {
-      lan.prevServiceItem();
-    } else {
-      const { currentItemIndex } = projector.state;
-      if (currentItemIndex > 0) projector.goToItem(currentItemIndex - 1);
-    }
+    const { currentItemIndex } = projector.state;
+    if (currentItemIndex > 0) projector.goToItem(currentItemIndex - 1);
   };
   const handleNextSong = () => {
-    if (isLAN) {
-      lan.nextServiceItem();
-    } else {
-      const { currentItemIndex, playlist } = projector.state;
-      if (currentItemIndex < playlist.length - 1) projector.goToItem(currentItemIndex + 1);
-    }
+    const { currentItemIndex, playlist } = projector.state;
+    if (currentItemIndex < playlist.length - 1) projector.goToItem(currentItemIndex + 1);
   };
-  const handleToggleLive = () => { if (isLAN) lan.toggleDisplay(); else projector.toggleLive(); };
+  const handleToggleLive = () => projector.toggleLive();
 
-  const isLive = isLAN ? lan.state.displayMode === 'show' : projector.state.isLive;
+  const isLive = projector.state.isLive;
 
-  let title = '';
-  let slideInfo = '';
-  if (isLAN) {
-    title = lan.state.currentTitle || '';
-    slideInfo = `${lan.state.currentSlideIndex + 1}/${lan.state.slides.length}`;
-  } else {
-    const song = projector.directSong || projector.currentSong;
-    title = song?.title || '';
-    const vi = projector.directSong ? projector.directVerseIndex : projector.state.currentVerseIndex;
-    const total = song ? getSongSlides(song).length : 0;
-    if (total > 0) slideInfo = `${vi + 1}/${total}`;
-  }
-
-  const label = activeRemote === 'projector' ? 'Rzutnik' : activeRemote === 'projectorLAN' ? 'LAN Serwer' : 'LAN';
+  const song = projector.directSong || projector.currentSong;
+  const title = song?.title || '';
+  const vi = projector.directSong ? projector.directVerseIndex : projector.state.currentVerseIndex;
+  const total = song ? getSongSlides(song).length : 0;
+  const slideInfo = total > 0 ? `${vi + 1}/${total}` : '';
 
   return (
     <div className="flex flex-col gap-2 p-3">
       {/* Header with status */}
       <div className="flex items-center gap-2 px-1">
         <div className={`w-3 h-3 rounded-full shrink-0 ${isLive ? 'bg-success animate-pulse' : 'bg-warning'}`} />
-        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rzutnik</span>
       </div>
 
       {/* Current song info */}

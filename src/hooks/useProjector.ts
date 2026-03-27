@@ -336,8 +336,8 @@ export function useProjector() {
     }
   }, []);
 
-  // Sync for LAN (WebSocket) + Internet (Realtime broadcast)
-  const projectorSync = useProjectorSync('controller', undefined, handleControlReceived, undefined, undefined, undefined, handleRequestState);
+  // Sync via Supabase Realtime (Internet)
+  const projectorSync = useProjectorSync('controller', undefined, handleControlReceived, handleRequestState);
   const { sendState: syncSendState, sendControlState: syncSendControlState } = projectorSync;
 
   // Keep ref updated

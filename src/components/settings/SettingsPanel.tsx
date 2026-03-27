@@ -13,14 +13,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 const MODULES_KEY = 'organista_modules';
 
-export type ActiveRemote = 'projector' | 'projectorLAN' | 'projectorLANRemote' | null;
+export type ActiveRemote = 'projector' | null;
 
 export type ViewMode = 'simple' | 'all' | 'complex';
 
 export interface ModuleSettings {
   projectorEnabled: boolean;
-  projectorLANEnabled: boolean;
-  projectorLANRemoteEnabled: boolean;
   activeRemote?: ActiveRemote;
   viewMode?: ViewMode;
   songsSyncEnabled?: boolean;
@@ -31,7 +29,7 @@ export function getModuleSettings(): ModuleSettings {
     const stored = localStorage.getItem(MODULES_KEY);
     if (stored) return JSON.parse(stored);
   } catch {}
-  return { projectorEnabled: true, projectorLANEnabled: false, projectorLANRemoteEnabled: false, activeRemote: null };
+  return { projectorEnabled: true, activeRemote: null };
 }
 
 function saveModuleSettings(settings: ModuleSettings) {
@@ -273,27 +271,9 @@ export function SettingsPanel({ onImport, moduleSettings, onModuleSettingsChange
 
   const toggleModule = (key: keyof Omit<ModuleSettings, 'activeRemote'>) => {
     const updated = { ...moduleSettings, [key]: !moduleSettings[key] };
-    // If enabling one LAN module, disable the other
-    if (updated[key]) {
-      if (key === 'projectorLANEnabled' && updated.projectorLANRemoteEnabled) {
-        updated.projectorLANRemoteEnabled = false;
-        if (updated.activeRemote === 'projectorLANRemote') updated.activeRemote = null;
-      }
-      if (key === 'projectorLANRemoteEnabled' && updated.projectorLANEnabled) {
-        updated.projectorLANEnabled = false;
-        if (updated.activeRemote === 'projectorLAN') updated.activeRemote = null;
-      }
-    }
-    // If disabling a module that has active remote, clear the remote
-    if (!updated[key]) {
-      const remoteMap: Record<string, ActiveRemote> = {
-        projectorEnabled: 'projector',
-        projectorLANEnabled: 'projectorLAN',
-        projectorLANRemoteEnabled: 'projectorLANRemote',
-      };
-      if (moduleSettings.activeRemote === remoteMap[key]) {
-        updated.activeRemote = null;
-      }
+    // If disabling projector that has active remote, clear the remote
+    if (!updated[key] && key === 'projectorEnabled' && moduleSettings.activeRemote === 'projector') {
+      updated.activeRemote = null;
     }
     saveModuleSettings(updated);
     onModuleSettingsChange(updated);

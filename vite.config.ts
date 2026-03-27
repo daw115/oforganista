@@ -1,144 +1,8 @@
-import { defineConfig, type PluginOption } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import fs from "fs";
-import http from "http";
-import { WebSocketServer } from "ws";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
-
-/** Auto-detect OpenLP songs.sqlite on local disk */
-function findOpenLpDb(): string | null {
-  const home = process.env.USERPROFILE || process.env.HOME || '';
-  const candidates = [
-    path.join(home, 'AppData', 'Roaming', 'openlp', 'data', 'songs', 'songs.sqlite'),
-    path.join(home, 'AppData', 'Roaming', 'openlp', 'songs', 'songs.sqlite'),
-    path.join(home, '.local', 'share', 'openlp', 'songs', 'songs.sqlite'),
-    path.join(home, '.openlp', 'data', 'songs', 'songs.sqlite'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
-  return null;
-}
-
-/** Vite plugin: proxy + local DB serving */
-function openLpPlugin(): PluginOption {
-  const localDbPath = findOpenLpDb();
-  if (localDbPath) {
-    console.log(`[openlp] Found local DB: ${localDbPath}`);
-  }
-
-  return {
-    name: 'openlp-local',
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        // ─── /local-db-info ───
-        if (req.url === '/local-db-info') {
-          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-          res.end(JSON.stringify({
-            available: !!localDbPath && fs.existsSync(localDbPath),
-            path: localDbPath,
-          }));
-          return;
-        }
-
-        // ─── /local-db → serve SQLite file ───
-        if (req.url === '/local-db') {
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          if (!localDbPath || !fs.existsSync(localDbPath)) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Nie znaleziono bazy OpenLP na dysku' }));
-            return;
-          }
-          const data = fs.readFileSync(localDbPath);
-          res.writeHead(200, {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': data.length,
-            'X-DB-Path': localDbPath,
-          });
-          res.end(data);
-          return;
-        }
-
-        // ─── /openlp-proxy/<ip>/<port>/... ───
-        if (!req.url || !req.url.startsWith('/openlp-proxy/')) return next();
-
-        const parts = req.url.replace('/openlp-proxy/', '').split('/');
-        const targetIp = parts[0] || '127.0.0.1';
-        const targetPort = parseInt(parts[1], 10) || 4316;
-        const targetPath = '/' + parts.slice(2).join('/');
-
-        const options: http.RequestOptions = {
-          hostname: targetIp,
-          port: targetPort,
-          path: targetPath,
-          method: req.method || 'GET',
-          headers: { 'Accept': 'application/json' },
-          timeout: 5000,
-        };
-
-        const proxyReq = http.request(options, (proxyRes) => {
-          res.writeHead(proxyRes.statusCode || 502, {
-            'Content-Type': proxyRes.headers['content-type'] || 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': '*',
-          });
-          proxyRes.pipe(res);
-        });
-
-        proxyReq.on('error', (err) => {
-          res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-          res.end(JSON.stringify({ error: err.message }));
-        });
-
-        proxyReq.on('timeout', () => {
-          proxyReq.destroy();
-          res.writeHead(504, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-          res.end(JSON.stringify({ error: 'Timeout' }));
-        });
-
-        if (req.method === 'POST' || req.method === 'PUT') {
-          req.pipe(proxyReq);
-        } else {
-          proxyReq.end();
-        }
-      });
-
-      // ─── WebSocket for projector sync ───
-      const wss = new WebSocketServer({ noServer: true });
-      let latestState: string | null = null;
-      const wsClients = new Set<import("ws").WebSocket>();
-
-      wss.on('connection', (ws) => {
-        wsClients.add(ws);
-        if (latestState) ws.send(latestState);
-
-        ws.on('message', (data) => {
-          const msg = typeof data === 'string' ? data : data.toString();
-          latestState = msg;
-          for (const client of wsClients) {
-            if (client !== ws && client.readyState === 1) {
-              client.send(msg);
-            }
-          }
-        });
-
-        ws.on('close', () => wsClients.delete(ws));
-      });
-
-      server.httpServer?.on('upgrade', (req, socket, head) => {
-        if (req.url === '/ws-projector') {
-          wss.handleUpgrade(req, socket, head, (ws) => {
-            wss.emit('connection', ws, req);
-          });
-        }
-      });
-
-      console.log('[openlp] WebSocket projector sync: active on /ws-projector');
-    },
-  };
-}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -150,7 +14,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
-    openLpPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -274,5 +137,35 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  build: {
+    // Split heavy dependencies into separate chunks for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React — cached long-term, rarely changes
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // UI framework — shadcn/radix components
+          'vendor-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-accordion',
+          ],
+          // Data layer
+          'vendor-data': ['@tanstack/react-query', '@supabase/supabase-js'],
+          // Heavy libs — only loaded when needed
+          'vendor-charts': ['recharts'],
+          'vendor-pdf': ['pdfjs-dist'],
+          // Date utilities
+          'vendor-date': ['date-fns'],
+        },
+      },
+    },
+    // Increase chunk size warning to reduce noise
+    chunkSizeWarningLimit: 800,
   },
 }));
