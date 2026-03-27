@@ -193,8 +193,11 @@ export function useProjector() {
 
   // Auto-rebuild slides when preset version changes (songs already in IndexedDB)
   const presetRebuildRef = useRef(false);
+  const songsLenRef = useRef(0);
   useEffect(() => {
-    if (presetRebuildRef.current || songs.length === 0) return;
+    // Only check when song count actually changes (avoids running on every setSongs)
+    if (presetRebuildRef.current || songs.length === 0 || songs.length === songsLenRef.current) return;
+    songsLenRef.current = songs.length;
     const activePreset = getActivePreset();
     const needsRebuild = songs.some(s => s.projectorPresetName !== activePreset.name);
     if (needsRebuild) {
@@ -373,20 +376,23 @@ export function useProjector() {
 
   // Get current verse text (direct mode takes priority)
   // Uses projector slides if available
-  const getCurrentText = useCallback((st: ProjectorState = state): string => {
-    if (directSong) {
-      const slides = getSongSlides(directSong);
-      const slide = slides[directVerseIndex];
-      return slide?.slide.text || directSong.verses[directVerseIndex]?.text || '';
+  // Memo: only recompute when the actual indices or active song change
+  const getCurrentText = useCallback((st: ProjectorState = stateRef.current): string => {
+    if (directSongRef.current) {
+      const ds = directSongRef.current;
+      const dvi = directVerseIndexRef.current;
+      const slides = getSongSlides(ds);
+      const slide = slides[dvi];
+      return slide?.slide.text || ds.verses[dvi]?.text || '';
     }
     const item = st.playlist[st.currentItemIndex];
     if (!item) return '';
-    const song = songs.find(s => s.id === item.songId);
+    const song = songsRef.current.find(s => s.id === item.songId);
     if (!song) return '';
     const slides = getSongSlides(song);
     const slide = slides[st.currentVerseIndex];
     return slide?.slide.text || song.verses[st.currentVerseIndex]?.text || '';
-  }, [state, songs, directSong, directVerseIndex]);
+  }, []); // stable — uses refs internally
 
   // Keep refs updated
   useEffect(() => {
@@ -407,20 +413,21 @@ export function useProjector() {
     persistPlaylist(state.playlist);
   }, [state.playlist]);
 
-  // Broadcast whenever state changes
+  // Broadcast whenever relevant state changes
+  // Only depend on the values that actually affect what's displayed
   useEffect(() => {
-    if (directSong) return; // direct mode broadcasts display separately
+    if (directSongRef.current) return; // direct mode broadcasts display separately
     const text = getCurrentText();
-    const item = state.playlist[state.currentItemIndex];
-    const song = item ? songs.find(s => s.id === item.songId) : null;
+    const item = stateRef.current.playlist[stateRef.current.currentItemIndex];
+    const song = item ? songsRef.current.find(s => s.id === item.songId) : null;
     broadcastState(text, state.isLive, song?.title, song?.fontColor);
-    
+
     // Also broadcast control state to other controllers (skip if this was a remote update)
     if (!ignoringRemoteUpdate.current) {
-      const payload: ControlSyncPayload = { ...state, directSong: null, directVerseIndex: 0 };
+      const payload: ControlSyncPayload = { ...stateRef.current, directSong: null, directVerseIndex: 0 };
       syncSendControlState(payload);
     }
-  }, [state.currentItemIndex, state.currentVerseIndex, state.isLive, state.playlist, getCurrentText, broadcastState, songs, syncSendControlState, directSong]);
+  }, [state.currentItemIndex, state.currentVerseIndex, state.isLive, state.playlist.length, broadcastState, syncSendControlState, getCurrentText]);
 
   // Import SQLite database from file
   const importDatabase = useCallback(async (file: File) => {
@@ -829,20 +836,37 @@ export function useProjector() {
   // Search songs (uses indexed search when available, fallback to simple match)
   const [searchByContent, setSearchByContent] = useState(false);
 
+  // Debounced search query — prevents re-filtering on every keystroke
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  useEffect(() => {
+    if (!searchQuery) { setDebouncedQuery(''); return; }
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const normalizeSearch = useCallback((text: string) =>
     text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'l').replace(/ą/g, 'a').replace(/Ą/g, 'a').replace(/ę/g, 'e').replace(/Ę/g, 'e').replace(/[^a-z0-9\s]/gi, '').toLowerCase().replace(/\s+/g, ' ').trim()
   , []);
 
+  // Stable song count ref — avoid re-filtering when songs array identity changes but content is same
+  const songsVersionRef = useRef(0);
+  const prevSongsLenRef = useRef(0);
+  if (songs.length !== prevSongsLenRef.current) {
+    prevSongsLenRef.current = songs.length;
+    songsVersionRef.current++;
+  }
+  const songsVersion = songsVersionRef.current;
+
   const filteredSongs = useMemo(() => {
-    if (!searchQuery) return songs;
+    if (!debouncedQuery) return songs;
     // Use indexed search if songs have been indexed (v2)
     const hasIndex = songs.length > 0 && songs[0].searchTokens;
     if (hasIndex) {
-      const results = searchSongs(songs, searchQuery, { searchContent: searchByContent, limit: 200 });
+      const results = searchSongs(songs, debouncedQuery, { searchContent: searchByContent, limit: 200 });
       return results.map(r => r.song);
     }
     // Fallback to simple search
-    const q = normalizeSearch(searchQuery);
+    const q = normalizeSearch(debouncedQuery);
     const filtered = songs.filter(s => {
       const titleMatch = normalizeSearch(s.searchText).includes(q);
       if (titleMatch) return true;
@@ -852,7 +876,7 @@ export function useProjector() {
       return false;
     });
     return filtered.sort((a, b) => a.title.localeCompare(b.title, 'pl'));
-  }, [searchQuery, songs, searchByContent, normalizeSearch]);
+  }, [debouncedQuery, songsVersion, searchByContent, normalizeSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Get current song object
   const currentItem = state.playlist[state.currentItemIndex];

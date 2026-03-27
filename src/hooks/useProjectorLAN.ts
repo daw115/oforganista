@@ -189,7 +189,7 @@ export function useProjectorLAN() {
           error: 'Brak odpowiedzi z OpenLP',
         }));
       }
-    }, 500);
+    }, 1000);
 
     return () => { active = false; clearInterval(interval); };
   }, [polling, refreshData]);
@@ -249,10 +249,10 @@ export function useProjectorLAN() {
 
   const goToServiceItem = useCallback(async (index: number) => {
     try {
-      await serviceGoToItem(configRef.current, index, state.serviceItems);
+      await serviceGoToItem(configRef.current, index, stateRef.current.serviceItems);
       scheduleRefresh([260, 800, 1500]);
     } catch {}
-  }, [scheduleRefresh, state.serviceItems]);
+  }, [scheduleRefresh]);
 
   const localNextServiceItem = useCallback(async () => {
     try {
@@ -269,17 +269,22 @@ export function useProjectorLAN() {
   }, [scheduleRefresh]);
 
   const toggleDisplay = useCallback(async () => {
-    const newMode = state.displayMode === 'blank' ? 'show' : 'blank';
+    const newMode = stateRef.current.displayMode === 'blank' ? 'show' : 'blank';
     try {
       await setDisplayMode(configRef.current, newMode);
       setState(prev => ({ ...prev, displayMode: newMode }));
       scheduleRefresh([250, 700]);
     } catch {}
-  }, [scheduleRefresh, state.displayMode]);
+  }, [scheduleRefresh]);
 
   // ─── Bridge: handle commands from remote controllers ───
+  // Use refs for state values to keep callback stable
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+
   const handleLanCommand = useCallback(async (cmd: LANCommand) => {
-    if (!state.connected) return;
+    const currentState = stateRef.current;
+    if (!currentState.connected) return;
     console.log(`[LAN Bridge] Executing command: ${cmd.type}`, cmd.index);
 
     const refreshByCommand = (type: LANCommandType) => {
@@ -307,10 +312,10 @@ export function useProjectorLAN() {
           if (cmd.index !== undefined) await controllerGoToSlide(configRef.current, cmd.index);
           break;
         case 'goToItem':
-          if (cmd.index !== undefined) await serviceGoToItem(configRef.current, cmd.index, state.serviceItems);
+          if (cmd.index !== undefined) await serviceGoToItem(configRef.current, cmd.index, currentState.serviceItems);
           break;
         case 'toggleBlank': {
-          const newMode = state.displayMode === 'blank' ? 'show' : 'blank';
+          const newMode = currentState.displayMode === 'blank' ? 'show' : 'blank';
           await setDisplayMode(configRef.current, newMode);
           setState(prev => ({ ...prev, displayMode: newMode }));
           break;
@@ -339,7 +344,7 @@ export function useProjectorLAN() {
       console.error('[LAN Bridge] Command failed:', err);
       scheduleRefresh([300, 1100]);
     }
-  }, [scheduleRefresh, state.connected, state.displayMode, state.serviceItems]);
+  }, [scheduleRefresh]); // stable — uses stateRef internally
 
   // ─── Remote LAN state received from bridge (for remote controllers) ───
   const [remoteLanState, setRemoteLanState] = useState<LANBridgeState | null>(null);
