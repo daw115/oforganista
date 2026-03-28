@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PinLockScreen } from '@/components/auth/PinLockScreen';
 import { getProjectorSettings } from '@/lib/projectorSettings';
 import { useSchedule } from '@/hooks/useSchedule';
@@ -48,6 +49,7 @@ const SectionLoader = () => (
 
 
 const Index = () => {
+  const navigate = useNavigate();
   const {
     sched, loading, msg, organists, dates, stats, rawCsv,
     todayStr, tomorrowStr, todayGroup, tomorrowGroup,
@@ -72,7 +74,11 @@ const Index = () => {
   }, []);
   const viewMode: ViewMode = moduleSettings.viewMode ?? 'complex';
   const defaultSection: Section = viewMode === 'all' ? 'all' : 'dashboard';
-  const [section, setSection] = useState<Section>(defaultSection);
+  const [section, setSectionRaw] = useState<Section>(defaultSection);
+  const setSection = useCallback((s: Section) => {
+    if (s === 'cockpit') { navigate('/cockpit'); return; }
+    setSectionRaw(s);
+  }, [navigate]);
   const [showFull, setShowFull] = useState(false);
   const [unlockedUser, setUnlockedUser] = useState<string | null>(() => {
     try { return sessionStorage.getItem('appUnlockedUser'); } catch { return null; }

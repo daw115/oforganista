@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, Calendar, BookOpen, MonitorPlay, Settings, MoreVertical, RefreshCw, ClipboardPaste, HelpCircle, Trash2, Music, Megaphone, Maximize, ChevronLeft, ChevronRight, Mic, Library, Church, BookOpenCheck, MoreHorizontal, X, Database, ListMusic } from 'lucide-react';
+import { LayoutDashboard, Calendar, BookOpen, MonitorPlay, Settings, MoreVertical, RefreshCw, ClipboardPaste, HelpCircle, Trash2, Music, Megaphone, Maximize, ChevronLeft, ChevronRight, Mic, Library, Church, BookOpenCheck, MoreHorizontal, X, Database, ListMusic, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPL } from '@/lib/dateUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ModuleSettings } from '@/components/settings/SettingsPanel';
 
-export type Section = 'dashboard' | 'all' | 'schedule' | 'liturgy' | 'announcements' | 'devotions' | 'projector' | 'songLibrary' | 'songEditor' | 'melodyLibrary' | 'songbook' | 'cantors' | 'harmonograms' | 'settings';
+export type Section = 'dashboard' | 'all' | 'cockpit' | 'schedule' | 'liturgy' | 'announcements' | 'devotions' | 'projector' | 'songLibrary' | 'songEditor' | 'melodyLibrary' | 'songbook' | 'cantors' | 'harmonograms' | 'settings';
 export type ViewMode = 'simple' | 'complex';
 
 interface SidebarProps {
@@ -39,6 +39,7 @@ export function AppSidebar({ active, onNavigate, onPaste, onHelp, onClear, onRef
 
   const navItems: { id: Section; label: string; shortLabel: string; icon: typeof Calendar; visible: boolean; pinMobile?: boolean }[] = [
     { id: 'dashboard', label: 'Dashboard', shortLabel: 'APP', icon: LayoutDashboard, visible: true, pinMobile: true },
+    { id: 'cockpit', label: 'Cockpit', shortLabel: 'Cockpit', icon: LayoutGrid, visible: true },
     { id: 'schedule', label: 'Harmonogram', shortLabel: 'Grafik', icon: Calendar, visible: true },
     { id: 'liturgy', label: 'Liturgia', shortLabel: 'Liturgia', icon: BookOpen, visible: true, pinMobile: true },
     { id: 'announcements', label: 'Ogłoszenia', shortLabel: 'Ogłosz.', icon: Megaphone, visible: true },

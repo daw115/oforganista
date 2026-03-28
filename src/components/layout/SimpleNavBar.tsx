@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutDashboard, Calendar, Church, Megaphone, Mic, BookOpenCheck, Music, MonitorPlay, Settings, BookOpen, Library, Database, ListMusic, ChevronUp, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Calendar, Church, Megaphone, Mic, BookOpenCheck, Music, MonitorPlay, Settings, BookOpen, Library, Database, ListMusic, ChevronUp, ChevronDown, LayoutGrid } from 'lucide-react';
 import type { Section } from '@/components/layout/AppSidebar';
 
 interface SimpleNavBarProps {
@@ -10,6 +10,7 @@ interface SimpleNavBarProps {
 
 const links: { icon: typeof LayoutDashboard; label: string; section: Section; colorClass: string }[] = [
   { icon: LayoutDashboard, label: 'APP', section: 'dashboard', colorClass: 'text-primary' },
+  { icon: LayoutGrid, label: 'Cockpit', section: 'cockpit', colorClass: 'text-primary' },
   { icon: Calendar, label: 'Grafik', section: 'schedule', colorClass: 'text-primary' },
   { icon: BookOpenCheck, label: 'Liturgia', section: 'liturgy', colorClass: 'text-emerald' },
   { icon: Megaphone, label: 'Ogłosz.', section: 'announcements', colorClass: 'text-amber' },
