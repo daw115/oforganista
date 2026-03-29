@@ -18,7 +18,7 @@ import {
   reorderWidgets,
   resetLayout,
 } from '@/lib/cockpitLayout';
-import { GripVertical, X, Plus, Settings2, RotateCcw, ChevronUp, ChevronDown, Minimize2, Maximize2 } from 'lucide-react';
+import { GripVertical, X, Plus, Settings2, RotateCcw, ChevronUp, ChevronDown, Minimize2, Maximize2, ArrowLeftRight, ArrowUpDown } from 'lucide-react';
 
 interface CockpitGridProps {
   layout: CockpitLayout;
@@ -125,27 +125,78 @@ export function CockpitGrid({ layout, onLayoutChange, renderWidget }: CockpitGri
     });
   }, []);
 
-  // ─── Resize (col span cycle: 4 → 6 → 8 → 12 → 4) ──────
+  // ─── Resize helpers ──────────────────────────────────────
 
-  const handleResize = useCallback((widgetId: string) => {
-    const placement = layout.placements.find(p => p.widgetId === widgetId);
-    if (!placement) return;
-    const sizes = [4, 6, 8, 12];
-    const def = getWidgetDef(widgetId);
-    const minSpan = def?.minColSpan || 3;
-    const validSizes = sizes.filter(s => s >= minSpan);
-    const currentIdx = validSizes.indexOf(placement.colSpan);
-    const nextIdx = (currentIdx + 1) % validSizes.length;
+  const COL_SIZES = [3, 4, 6, 8, 12];
+  const ROW_SIZES = [1, 2, 3, 4, 5];
 
+  const updateWidgetSize = useCallback((widgetId: string, updates: Partial<Pick<WidgetPlacement, 'colSpan' | 'rowSpan'>>) => {
     const newLayout = {
       ...layout,
       placements: layout.placements.map(p =>
-        p.widgetId === widgetId ? { ...p, colSpan: validSizes[nextIdx] } : p
+        p.widgetId === widgetId ? { ...p, ...updates } : p
       ),
     };
     onLayoutChange(newLayout);
     saveLayout(newLayout);
   }, [layout, onLayoutChange]);
+
+  const handleWidthChange = useCallback((widgetId: string, direction: 'grow' | 'shrink') => {
+    const placement = layout.placements.find(p => p.widgetId === widgetId);
+    if (!placement) return;
+    const def = getWidgetDef(widgetId);
+    const minSpan = def?.minColSpan || 3;
+    const validSizes = COL_SIZES.filter(s => s >= minSpan);
+    const currentIdx = validSizes.indexOf(placement.colSpan);
+
+    let nextIdx: number;
+    if (direction === 'grow') {
+      nextIdx = currentIdx < validSizes.length - 1 ? currentIdx + 1 : currentIdx;
+    } else {
+      nextIdx = currentIdx > 0 ? currentIdx - 1 : currentIdx;
+    }
+
+    if (currentIdx === -1) {
+      // Current size is not in the standard list — find nearest
+      const nearest = validSizes.reduce((prev, curr) =>
+        Math.abs(curr - placement.colSpan) < Math.abs(prev - placement.colSpan) ? curr : prev
+      );
+      nextIdx = validSizes.indexOf(nearest);
+    }
+
+    updateWidgetSize(widgetId, { colSpan: validSizes[nextIdx] });
+  }, [layout, updateWidgetSize]);
+
+  const handleHeightChange = useCallback((widgetId: string, direction: 'grow' | 'shrink') => {
+    const placement = layout.placements.find(p => p.widgetId === widgetId);
+    if (!placement) return;
+    const currentIdx = ROW_SIZES.indexOf(placement.rowSpan);
+
+    let nextIdx: number;
+    if (direction === 'grow') {
+      nextIdx = currentIdx < ROW_SIZES.length - 1 ? currentIdx + 1 : currentIdx;
+    } else {
+      nextIdx = currentIdx > 0 ? currentIdx - 1 : currentIdx;
+    }
+
+    if (currentIdx === -1) {
+      const nearest = ROW_SIZES.reduce((prev, curr) =>
+        Math.abs(curr - placement.rowSpan) < Math.abs(prev - placement.rowSpan) ? curr : prev
+      );
+      nextIdx = ROW_SIZES.indexOf(nearest);
+    }
+
+    updateWidgetSize(widgetId, { rowSpan: ROW_SIZES[nextIdx] });
+  }, [layout, updateWidgetSize]);
+
+  // Size labels for display
+  const getWidthLabel = (colSpan: number) => {
+    if (colSpan <= 3) return 'XS';
+    if (colSpan <= 4) return 'S';
+    if (colSpan <= 6) return 'M';
+    if (colSpan <= 8) return 'L';
+    return 'XL';
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -251,40 +302,87 @@ export function CockpitGrid({ layout, onLayoutChange, renderWidget }: CockpitGri
             >
               {/* Edit mode overlay — drag handle + controls */}
               {editMode && (
-                <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-2.5 py-1.5 bg-card/95 backdrop-blur-sm border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab active:cursor-grabbing" />
-                    <span className="text-sm font-medium">{def?.icon} {def?.label}</span>
+                <div className="absolute inset-x-0 top-0 z-20 flex flex-col border-b border-border bg-card/95 backdrop-blur-sm">
+                  {/* Row 1: title + order controls + remove */}
+                  <div className="flex items-center justify-between px-2.5 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                      <span className="text-sm font-medium">{def?.icon} {def?.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleMoveUp(placement.widgetId)}
+                        className="p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground touch-manipulation active:scale-90"
+                        title="Przesuń w górę"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleMoveDown(placement.widgetId)}
+                        className="p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground touch-manipulation active:scale-90"
+                        title="Przesuń w dół"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleToggle(placement.widgetId)}
+                        className="p-1.5 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive touch-manipulation active:scale-90"
+                        title="Ukryj widget"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleMoveUp(placement.widgetId)}
-                      className="p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground touch-manipulation active:scale-90"
-                      title="Przesuń w górę"
-                    >
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleMoveDown(placement.widgetId)}
-                      className="p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground touch-manipulation active:scale-90"
-                      title="Przesuń w dół"
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleResize(placement.widgetId)}
-                      className="px-2 py-1 rounded-lg hover:bg-muted/50 text-muted-foreground text-xs font-mono font-bold touch-manipulation active:scale-90"
-                      title="Zmień rozmiar"
-                    >
-                      {placement.colSpan}/12
-                    </button>
-                    <button
-                      onClick={() => handleToggle(placement.widgetId)}
-                      className="p-1.5 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive touch-manipulation active:scale-90"
-                      title="Ukryj widget"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                  {/* Row 2: resize controls */}
+                  <div className="flex items-center gap-3 px-2.5 py-1 border-t border-border/50 bg-muted/20">
+                    {/* Width controls */}
+                    <div className="flex items-center gap-1">
+                      <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground/70" />
+                      <button
+                        onClick={() => handleWidthChange(placement.widgetId, 'shrink')}
+                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground font-bold text-sm touch-manipulation active:scale-90 select-none"
+                        title="Zwęź"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-semibold text-foreground min-w-[28px] text-center">
+                        {getWidthLabel(placement.colSpan)}
+                      </span>
+                      <button
+                        onClick={() => handleWidthChange(placement.widgetId, 'grow')}
+                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground font-bold text-sm touch-manipulation active:scale-90 select-none"
+                        title="Rozszerz"
+                      >
+                        +
+                      </button>
+                    </div>
+                    {/* Separator */}
+                    <div className="w-px h-4 bg-border" />
+                    {/* Height controls */}
+                    <div className="flex items-center gap-1">
+                      <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground/70" />
+                      <button
+                        onClick={() => handleHeightChange(placement.widgetId, 'shrink')}
+                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground font-bold text-sm touch-manipulation active:scale-90 select-none"
+                        title="Niższy"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-semibold text-foreground min-w-[16px] text-center">
+                        {placement.rowSpan}
+                      </span>
+                      <button
+                        onClick={() => handleHeightChange(placement.widgetId, 'grow')}
+                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground font-bold text-sm touch-manipulation active:scale-90 select-none"
+                        title="Wyższy"
+                      >
+                        +
+                      </button>
+                    </div>
+                    {/* Size indicator */}
+                    <span className="text-[10px] text-muted-foreground/50 ml-auto font-mono">
+                      {placement.colSpan}×{placement.rowSpan}
+                    </span>
                   </div>
                 </div>
               )}
@@ -305,7 +403,7 @@ export function CockpitGrid({ layout, onLayoutChange, renderWidget }: CockpitGri
 
               {/* Widget content */}
               {!isCollapsed && (
-                <div className={`h-full overflow-auto ${editMode ? 'pt-9' : ''}`}>
+                <div className={`h-full overflow-auto ${editMode ? 'pt-[72px]' : ''}`}>
                   {renderWidget(placement.widgetId)}
                 </div>
               )}
