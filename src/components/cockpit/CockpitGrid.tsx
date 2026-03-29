@@ -20,10 +20,12 @@ import {
 } from '@/lib/cockpitLayout';
 import { GripVertical, X, Plus, Settings2, RotateCcw, ChevronUp, ChevronDown, Minimize2, Maximize2, ArrowLeftRight, ArrowUpDown } from 'lucide-react';
 
+export interface WidgetSize { cols: number; rows: number; }
+
 interface CockpitGridProps {
   layout: CockpitLayout;
   onLayoutChange: (layout: CockpitLayout) => void;
-  renderWidget: (widgetId: string) => ReactNode;
+  renderWidget: (widgetId: string, size: WidgetSize) => ReactNode;
 }
 
 export function CockpitGrid({ layout, onLayoutChange, renderWidget }: CockpitGridProps) {
@@ -276,6 +278,7 @@ export function CockpitGrid({ layout, onLayoutChange, renderWidget }: CockpitGri
         {visible.map((placement) => {
           const def = getWidgetDef(placement.widgetId);
           const isDragTarget = dragOver === placement.widgetId;
+          const widgetSize: WidgetSize = { cols: placement.colSpan, rows: placement.rowSpan };
           const isCollapsed = collapsedWidgets.has(placement.widgetId);
 
           return (
@@ -403,8 +406,9 @@ export function CockpitGrid({ layout, onLayoutChange, renderWidget }: CockpitGri
 
               {/* Widget content */}
               {!isCollapsed && (
-                <div className={`h-full overflow-auto ${editMode ? 'pt-[72px]' : ''}`}>
-                  {renderWidget(placement.widgetId)}
+                <div style={{ zoom: placement.colSpan <= 3 ? 0.8 : placement.colSpan <= 4 ? 0.88 : placement.colSpan >= 8 ? 1.08 : 1 }}
+                    className={`h-full overflow-auto ${editMode ? 'pt-[72px]' : ''}`}>
+                  {renderWidget(placement.widgetId, widgetSize)}
                 </div>
               )}
             </div>

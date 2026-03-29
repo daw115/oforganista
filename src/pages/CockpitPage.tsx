@@ -17,7 +17,7 @@ import { useLiturgyPrefetch } from '@/hooks/useLiturgyPrefetch';
 import { getModuleSettings, syncModuleSettingsFromServer, type ModuleSettings } from '@/components/settings/SettingsPanel';
 import { getSongSlides } from '@/lib/projectorLayout';
 import type { LiturgyAddTarget } from '@/components/liturgy/LiturgyPanel';
-import { CockpitGrid } from '@/components/cockpit/CockpitGrid';
+import { CockpitGrid, type WidgetSize } from '@/components/cockpit/CockpitGrid';
 import {
   type CockpitLayout,
   loadLayout,
@@ -340,7 +340,7 @@ const CockpitPage = () => {
   }, [projector.openProjectorWindow]);
 
   // ─── Widget renderer ───
-  const renderWidget = useCallback((widgetId: string) => {
+  const renderWidget = useCallback((widgetId: string, size: WidgetSize) => {
     return (
       <Suspense fallback={<WidgetLoader />}>
         {widgetId === 'projector-pilot' && (
@@ -365,7 +365,7 @@ const CockpitPage = () => {
           <DevotionsManager />
         )}
         {widgetId === 'today-card' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-2">
+          <div className={`grid ${size.cols >= 6 ? "grid-cols-2" : "grid-cols-1"} gap-2 p-2`}>
             <TodayCard
               title="Dziś gra"
               emoji="☀️"
