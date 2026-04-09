@@ -3,6 +3,7 @@
  *
  * Renders all church app functionality as configurable widgets
  * in a drag & drop grid. Designed for laptop touchscreens.
+ * Glass-morphism design with responsive layout.
  */
 
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
@@ -17,7 +18,7 @@ import { useLiturgyPrefetch } from '@/hooks/useLiturgyPrefetch';
 import { getModuleSettings, syncModuleSettingsFromServer, type ModuleSettings } from '@/components/settings/SettingsPanel';
 import { getSongSlides } from '@/lib/projectorLayout';
 import type { LiturgyAddTarget } from '@/components/liturgy/LiturgyPanel';
-import { CockpitGrid, type WidgetSize } from '@/components/cockpit/CockpitGrid';
+import { CockpitGrid } from '@/components/cockpit/CockpitGrid';
 import {
   type CockpitLayout,
   loadLayout,
@@ -43,7 +44,7 @@ const WidgetLoader = () => (
   </div>
 );
 
-// ─── Projector Pilot Widget (touch-optimized mini control) ─────────────────
+// ─── Projector Pilot Widget (glass-morphism mini control) ─────────────────
 
 function ProjectorPilotWidget({ projector }: {
   projector: ReturnType<typeof useProjector>;
@@ -61,19 +62,24 @@ function ProjectorPilotWidget({ projector }: {
         <h3 className="text-base font-bold truncate flex-1">
           {song?.title || 'Brak pieśni'}
         </h3>
-        <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${isLive ? 'bg-red-500/20 text-red-400 animate-pulse' : 'bg-muted text-muted-foreground'}`}>
+        <span className={`cockpit-status-badge ${
+          isLive
+            ? 'bg-red-500/15 text-red-400 border-red-500/30'
+            : 'bg-muted/50 text-muted-foreground border-border/50'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-red-400 animate-pulse' : 'bg-muted-foreground/50'}`} />
           {isLive ? 'LIVE' : 'OFF'}
         </span>
       </div>
 
-      {/* Current text preview — larger, more readable */}
-      <div className="flex-1 bg-black/50 rounded-xl p-4 flex items-center justify-center text-center min-h-[80px] border border-white/5">
+      {/* Current text preview — glass preview box */}
+      <div className="cockpit-preview-box flex-1">
         <p className="text-base text-white/90 leading-relaxed line-clamp-5 whitespace-pre-line">
           {currentSlide?.slide.text || '—'}
         </p>
       </div>
 
-      {/* Slide indicator — larger dots for touch */}
+      {/* Slide indicator — glass dots */}
       {slides.length > 0 && (
         <div className="flex justify-center gap-1.5 flex-wrap">
           {slides.map((s, i) => (
@@ -83,7 +89,7 @@ function ProjectorPilotWidget({ projector }: {
                 if (projector.directSong) projector.goToDirectVerse(i);
                 else projector.goToItem(projector.state.currentItemIndex, i);
               }}
-              className={`min-w-[28px] h-7 rounded-full text-[10px] font-bold transition-all touch-manipulation active:scale-90 ${
+              className={`cockpit-slide-dot ${
                 i === verseIdx
                   ? 'bg-primary text-primary-foreground px-2'
                   : 'bg-muted-foreground/20 hover:bg-muted-foreground/40 text-muted-foreground px-1.5'
@@ -95,28 +101,22 @@ function ProjectorPilotWidget({ projector }: {
         </div>
       )}
 
-      {/* Controls — large touch targets (min 48px height) */}
+      {/* Controls — glass buttons */}
       <div className="flex items-center gap-2">
-        <button
-          onClick={projector.prevSlide}
-          className="flex-1 py-3 rounded-xl bg-muted/50 hover:bg-muted text-sm font-semibold transition-colors active:scale-[0.97] touch-manipulation select-none"
-        >
+        <button onClick={projector.prevSlide} className="cockpit-btn-control flex-1">
           ◀ Wstecz
         </button>
         <button
           onClick={projector.toggleLive}
-          className={`px-6 py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.95] touch-manipulation select-none ${
+          className={`cockpit-btn-live ${
             isLive
-              ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25'
-              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25'
+              ? 'bg-red-500 hover:bg-red-600 text-white border-red-400/30 shadow-lg shadow-red-500/20'
+              : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-400/30 shadow-lg shadow-emerald-600/20'
           }`}
         >
           {isLive ? 'STOP' : 'LIVE'}
         </button>
-        <button
-          onClick={projector.nextSlide}
-          className="flex-1 py-3 rounded-xl bg-muted/50 hover:bg-muted text-sm font-semibold transition-colors active:scale-[0.97] touch-manipulation select-none"
-        >
+        <button onClick={projector.nextSlide} className="cockpit-btn-control flex-1">
           Dalej ▶
         </button>
       </div>
@@ -131,7 +131,7 @@ function PlaylistWidget({ projector }: { projector: ReturnType<typeof useProject
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/30">
         <span className="text-sm font-bold text-muted-foreground">
           Playlist ({playlist.length})
         </span>
@@ -150,7 +150,7 @@ function PlaylistWidget({ projector }: { projector: ReturnType<typeof useProject
             Dodaj pieśni z liturgii lub wyszukiwarki
           </div>
         ) : (
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border/30">
             {playlist.map((item, i) => {
               const song = projector.songs.find(s => s.id === item.songId);
               const slides = song ? getSongSlides(song) : [];
@@ -159,7 +159,7 @@ function PlaylistWidget({ projector }: { projector: ReturnType<typeof useProject
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-2 transition-colors ${isActive ? 'bg-primary/10 border-l-3 border-primary' : 'hover:bg-muted/20'}`}
+                  className={`flex items-center gap-2 transition-colors ${isActive ? 'bg-primary/10 border-l-3 border-primary' : 'hover:bg-muted/10'}`}
                 >
                   <button
                     onClick={() => projector.goToItem(i)}
@@ -196,7 +196,7 @@ function PlaylistWidget({ projector }: { projector: ReturnType<typeof useProject
   );
 }
 
-// ─── Song Search Widget ───────────────────────────────────────────────────
+// ─── Song Search Widget ──────────────────────────────────────────────────
 
 function SongSearchWidget({ projector }: { projector: ReturnType<typeof useProjector> }) {
   const playlistIds = new Set(projector.state.playlist.map(p => p.songId));
@@ -208,7 +208,7 @@ function SongSearchWidget({ projector }: { projector: ReturnType<typeof useProje
         value={projector.searchQuery}
         onChange={(e) => projector.setSearchQuery(e.target.value)}
         placeholder="Szukaj pieśni... (tytuł lub numer)"
-        className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 touch-manipulation"
+        className="cockpit-search-input"
       />
       <div className="flex-1 overflow-auto -mx-1">
         {projector.filteredSongs.slice(0, 40).map(song => {
@@ -220,7 +220,7 @@ function SongSearchWidget({ projector }: { projector: ReturnType<typeof useProje
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors touch-manipulation min-h-[44px] ${
                 inPlaylist
                   ? 'bg-primary/5 text-primary/60 cursor-default'
-                  : 'hover:bg-muted/30 active:bg-muted/50'
+                  : 'hover:bg-muted/20 active:bg-muted/30'
               }`}
             >
               <span className="text-muted-foreground text-xs font-mono w-8 text-right shrink-0">
@@ -250,37 +250,42 @@ function QuickActionsWidget({ projector, onOpenProjector }: {
 }) {
   return (
     <div className="flex items-center gap-2.5 p-3 flex-wrap">
-      <button
-        onClick={onOpenProjector}
-        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold transition-colors touch-manipulation active:scale-[0.97] select-none"
-      >
-        <Monitor className="w-4 h-4" />
-        Otwórz projektor
+      <button onClick={onOpenProjector} className="cockpit-action-btn">
+        <span className="cockpit-action-icon bg-primary/15">
+          <Monitor className="w-4 h-4 text-primary" />
+        </span>
+        <span className="text-sm font-semibold">Otwórz projektor</span>
       </button>
       <button
         onClick={projector.toggleLive}
-        className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all touch-manipulation active:scale-[0.97] select-none ${
-          projector.state.isLive
-            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-            : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-        }`}
+        className="cockpit-action-btn"
       >
-        {projector.state.isLive ? '⏹ Stop' : '▶ Live'}
+        <span className={`cockpit-action-icon ${
+          projector.state.isLive ? 'bg-red-500/15' : 'bg-emerald-500/15'
+        }`}>
+          <span className={`text-base ${projector.state.isLive ? 'text-red-400' : 'text-emerald-400'}`}>
+            {projector.state.isLive ? '⏹' : '▶'}
+          </span>
+        </span>
+        <span className="text-sm font-semibold">{projector.state.isLive ? 'Stop' : 'Live'}</span>
       </button>
       <button
         onClick={() => {
           if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
           else document.exitFullscreen().catch(() => {});
         }}
-        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted text-sm font-semibold transition-colors touch-manipulation active:scale-[0.97] select-none"
+        className="cockpit-action-btn"
       >
-        ⛶ Fullscreen
+        <span className="cockpit-action-icon bg-muted/30">
+          <span className="text-base">⛶</span>
+        </span>
+        <span className="text-sm font-semibold">Fullscreen</span>
       </button>
-      <a
-        href="/"
-        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted text-sm font-semibold transition-colors touch-manipulation active:scale-[0.97] select-none"
-      >
-        ← Pełny widok
+      <a href="/" className="cockpit-action-btn">
+        <span className="cockpit-action-icon bg-muted/30">
+          <span className="text-base">←</span>
+        </span>
+        <span className="text-sm font-semibold">Pełny widok</span>
       </a>
     </div>
   );
@@ -340,7 +345,7 @@ const CockpitPage = () => {
   }, [projector.openProjectorWindow]);
 
   // ─── Widget renderer ───
-  const renderWidget = useCallback((widgetId: string, size: WidgetSize) => {
+  const renderWidget = useCallback((widgetId: string) => {
     return (
       <Suspense fallback={<WidgetLoader />}>
         {widgetId === 'projector-pilot' && (
@@ -365,7 +370,7 @@ const CockpitPage = () => {
           <DevotionsManager />
         )}
         {widgetId === 'today-card' && (
-          <div className={`grid ${size.cols >= 6 ? "grid-cols-2" : "grid-cols-1"} gap-2 p-2`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-2">
             <TodayCard
               title="Dziś gra"
               emoji="☀️"
